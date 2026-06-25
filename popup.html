@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cài đặt YouTube Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="card">
+    <header class="header">
+      <h1 class="title">YT CONTROL</h1>
+      <span class="badge">v2.0</span>
+    </header>
+    
+    <div class="content">
+      <!-- Toggle 1: Autopause -->
+      <div class="control-group">
+        <div class="control-label">
+          <h2>Bypass Autopause</h2>
+          <p>Tự động bấm "Tiếp tục xem" khi video bị dừng.</p>
+        </div>
+        <label class="switch-container">
+          <input type="checkbox" id="bypass-autopause" checked>
+          <span class="brutal-switch"></span>
+        </label>
+      </div>
+
+      <!-- Toggle 2: Hide Shorts -->
+      <div class="control-group">
+        <div class="control-label">
+          <h2>Ẩn YouTube Shorts</h2>
+          <p>Loại bỏ hoàn toàn Shorts khỏi giao diện YouTube.</p>
+        </div>
+        <label class="switch-container">
+          <input type="checkbox" id="hide-shorts" checked>
+          <span class="brutal-switch"></span>
+        </label>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="status-box">
+        <span class="status-dot"></span>
+        <span id="status-text">Đang bảo vệ</span>
+      </div>
+      <button class="brutal-btn" id="save-btn">Lưu lại</button>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

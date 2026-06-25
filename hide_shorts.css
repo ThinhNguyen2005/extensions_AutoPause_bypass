@@ -1,0 +1,36 @@
+/* Hide Shorts sections in Home & Subscriptions feeds */
+html.yt-hide-shorts ytd-rich-shelf-renderer[is-shorts],
+html.yt-hide-shorts ytd-reel-shelf-renderer {
+  display: none !important;
+}
+
+/* Hide individual Shorts in video grids (Home/Channel pages/Subscriptions) */
+html.yt-hide-shorts ytd-grid-video-renderer:has(ytd-thumbnail-overlay-time-status-renderer[overlay-style='SHORTS']),
+html.yt-hide-shorts ytd-rich-item-renderer:has(ytd-thumbnail-overlay-time-status-renderer[overlay-style='SHORTS']) {
+  display: none !important;
+}
+
+/* Hide Shorts in Search Results list */
+html.yt-hide-shorts ytd-video-renderer:has(a[href^="/shorts/"]) {
+  display: none !important;
+}
+
+/* Hide Shorts in "Watch Next" / Up Next sidebar */
+html.yt-hide-shorts ytd-compact-video-renderer:has(a[href^="/shorts/"]) {
+  display: none !important;
+}
+
+/* Hide Shorts entry in the main left sidebar navigation */
+html.yt-hide-shorts ytd-guide-entry-renderer:has(a[href^="/shorts"]) {
+  display: none !important;
+}
+
+/* Hide Shorts entry in the collapsed/mini left sidebar navigation */
+html.yt-hide-shorts ytd-mini-guide-entry-renderer:has(a[href^="/shorts"]) {
+  display: none !important;
+}
+
+/* Fallback for generic elements representing Shorts */
+html.yt-hide-shorts a[title="Shorts"] {
+  display: none !important;
+}
