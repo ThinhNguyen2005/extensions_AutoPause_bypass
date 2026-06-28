@@ -37,41 +37,31 @@ const getVideoId = () => {
 const checkAutoPause = () => {
   if (!enableAntiAutoPause) return;
   
-  // ytd-popup-container typically contains the dialog
-  // yt-confirm-dialog-renderer is the actual element
-  const dialog = document.querySelector('yt-confirm-dialog-renderer, ytd-popup-container');
+  // yt-confirm-dialog-renderer is the actual element containing the confirmation dialog
+  const dialog = document.querySelector('yt-confirm-dialog-renderer');
   if (dialog) {
     const isVisible = window.getComputedStyle(dialog).display !== 'none' && dialog.offsetHeight > 0;
     if (isVisible) {
-      // Find the confirm button (usually has text "Có" or "Yes" or id confirm-button)
-      const confirmBtn = dialog.querySelector('button, #confirm-button button, [aria-label*="Yes"], [aria-label*="Có"]');
-      if (confirmBtn) {
-        confirmBtn.click();
-        
-        // Also resume play if paused
-        const video = document.querySelector('video');
-        if (video && video.paused) {
-          video.play();
+      const text = dialog.innerText || "";
+      const isAutoPauseDialog = /tiếp tục xem|continue watching|still watching|tạm dừng/i.test(text);
+      
+      if (isAutoPauseDialog) {
+        // Find the confirm button specifically inside the confirm dialog
+        const confirmBtn = dialog.querySelector('#confirm-button button, yt-button-renderer#confirm-button button');
+        if (confirmBtn) {
+          confirmBtn.click();
+          
+          // Also resume play if paused
+          const video = document.querySelector('video');
+          if (video && video.paused) {
+            video.play();
+          }
+          
+          stats.blockedPauses++;
+          updateUI();
+          log('Đã chặn tự động dừng video (Are you still watching)!', 'success');
         }
-        
-        stats.blockedPauses++;
-        updateUI();
-        log('Đã chặn tự động dừng video (Are you still watching)!', 'success');
       }
-    }
-  }
-  
-  // Secondary check: if video is paused but there is an overlay showing confirm
-  const video = document.querySelector('video');
-  if (video && video.paused && !video.ended) {
-    const dialogConfirm = document.getElementById('confirm-button');
-    if (dialogConfirm && dialogConfirm.offsetHeight > 0) {
-      const btn = dialogConfirm.querySelector('button') || dialogConfirm;
-      btn.click();
-      video.play();
-      stats.blockedPauses++;
-      updateUI();
-      log('Đã tự động nhấn tiếp tục phát video.', 'success');
     }
   }
 };
