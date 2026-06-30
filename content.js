@@ -12,6 +12,24 @@ const stats = {
 
 let currentVideoId = "";
 
+// CSS: block popup + overlay from ever rendering
+const blockCSS = document.createElement('style');
+blockCSS.textContent = `
+  /* Block "Are you still watching?" popup and backdrop */
+  ytd-popup-container,
+  ytd-popup-container tp-yt-paper-listbox,
+  tp-yt-paper-dialog,
+  #dismiss-overlay,
+  .ytp-confirm-dialog-container,
+  ytd-enforcement-message-view-model,
+  ytd-enforcement-message-view-model .action-container {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+`;
+document.head.appendChild(blockCSS);
+
 // Sleep utility
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -33,37 +51,69 @@ const getVideoId = () => {
   return urlParams.get('v');
 };
 
-// Check for YouTube's "Are you still watching?" popup and click yes
+// Simulate user activity to prevent "Are you still watching?" from triggering
+const simulateActivity = () => {
+  if (!enableAntiAutoPause) return;
+  const video = document.querySelector('video');
+  if (!video || video.paused) return;
+
+  // Dispatch synthetic events that YouTube tracks as "user active"
+  ['mousemove', 'mousedown', 'keydown', 'scroll'].forEach(type => {
+    document.dispatchEvent(new Event(type, { bubbles: true }));
+  });
+};
+
+// Check for YouTube's "Are you still watching?" popup and destroy it
 const checkAutoPause = () => {
   if (!enableAntiAutoPause) return;
-  
-  // yt-confirm-dialog-renderer is the actual element containing the confirmation dialog
+
   const dialog = document.querySelector('yt-confirm-dialog-renderer');
   if (dialog) {
     const isVisible = window.getComputedStyle(dialog).display !== 'none' && dialog.offsetHeight > 0;
     if (isVisible) {
       const text = dialog.innerText || "";
       const isAutoPauseDialog = /tiếp tục xem|continue watching|still watching|tạm dừng/i.test(text);
-      
+
       if (isAutoPauseDialog) {
-        // Find the confirm button specifically inside the confirm dialog
-        const confirmBtn = dialog.querySelector('#confirm-button button, yt-button-renderer#confirm-button button');
-        if (confirmBtn) {
-          confirmBtn.click();
-          
-          // Also resume play if paused
-          const video = document.querySelector('video');
-          if (video && video.paused) {
-            video.play();
-          }
-          
-          stats.blockedPauses++;
-          updateUI();
-          log('Đã chặn tự động dừng video (Are you still watching)!', 'success');
-        }
+        dialog.remove();
+        stats.blockedPauses++;
+        updateUI();
+        log('Đã xoá popup "Bạn có tiếp tục xem?" — video không bị gián đoạn!', 'success');
       }
     }
   }
+};
+
+// MutationObserver: react instantly when dialog is added to DOM
+let dismissObserver = null;
+const startDismissObserver = () => {
+  if (dismissObserver) return;
+  dismissObserver = new MutationObserver((mutations) => {
+    if (!enableAntiAutoPause) return;
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        // Check if added node IS or CONTAINS the dialog
+        const dlg = node.matches?.('yt-confirm-dialog-renderer')
+          ? node
+          : node.querySelector?.('yt-confirm-dialog-renderer');
+        if (dlg) {
+          checkAutoPause();
+          return;
+        }
+      }
+    }
+  });
+  dismissObserver.observe(document.documentElement, { childList: true, subtree: true });
+};
+
+// Also catch unexpected pauses and try to dismiss + resume
+const onVideoPause = () => {
+  if (!enableAntiAutoPause) return;
+  // Small delay so the dialog has time to render
+  setTimeout(checkAutoPause, 100);
+  setTimeout(checkAutoPause, 300);
+  setTimeout(checkAutoPause, 600);
 };
 
 // Update CSS visibility class for blocking Shorts in sidebar/feeds
@@ -194,7 +244,22 @@ const init = () => {
   createPanel();
   updateShortsVisibility();
   
-  // Monitor video change (SPA navigation) and run checks
+  // Start MutationObserver for instant dialog detection
+  startDismissObserver();
+
+  // Watch for video pause events (fires even before we can see the dialog)
+  const attachVideoListener = () => {
+    const video = document.querySelector('video');
+    if (video && !video.dataset.ytProPauseBound) {
+      video.dataset.ytProPauseBound = '1';
+      video.addEventListener('pause', onVideoPause);
+    }
+  };
+  attachVideoListener();
+  // Re-attach on SPA navigation (new <video> element)
+  setInterval(attachVideoListener, 2000);
+
+  // Polling fallback (catches edge-cases the observer misses)
   setInterval(() => {
     // 1. YouTube Shorts Redirect
     if (enableRedirectShorts && window.location.pathname.startsWith('/shorts/')) {
@@ -216,6 +281,7 @@ const init = () => {
     }
     
     checkAutoPause();
+    simulateActivity();
   }, 1000);
   
   // Toggle message listener from background worker
